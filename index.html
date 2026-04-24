@@ -50,7 +50,6 @@ th, td { border: 1px solid #ccc; padding: 8px; }
     </label>
 
     <label>Preis €/kWh: <input type="number" id="price" disabled></label>
-    <label>Verlust %: <input type="number" id="loss" step="1" value="10"></label>
     <button onclick="addEntry()">Speichern</button>
   </div>
 </div>
@@ -60,7 +59,7 @@ th, td { border: 1px solid #ccc; padding: 8px; }
 
 <table>
 <thead>
-<tr><th>Datum</th><th>Ort</th><th>kWh (Auto)</th><th>kWh (Netz)</th><th>Kosten €</th><th>Aktion</th></tr>
+<tr><th>Datum</th><th>Ort</th><th>kWh</th><th>Kosten €</th><th>Aktion</th></tr>
 </thead>
 <tbody id="table"></tbody>
 </table>
@@ -71,6 +70,11 @@ let tariffs = JSON.parse(localStorage.getItem('tariffs')) || {
   Zuhause: 0.300,
   Kerstin: 0.300
 };
+
+function parseNumber(value) {
+  if (!value) return NaN;
+  return parseFloat(value.replace(",", "."));
+}
 
 function backupData() {
   const backup = { data, tariffs };
@@ -116,31 +120,20 @@ function updatePrice() {
   document.getElementById('price').value = tariffs[location];
 }
 
-function parseNumber(value) {
-  if (!value) return NaN;
-  return parseFloat(value.replace(",", "."));
-}
-
 function addEntry() {
   const date = document.getElementById('date').value;
   const kwh = parseNumber(document.getElementById('kwh').value);
   const location = document.getElementById('location').value;
   const price = tariffs[location];
-  const loss = parseNumber(document.getElementById('loss').value) / 100;
 
-  if (!date || isNaN(kwh) || isNaN(loss)) {
-    alert("Bitte gültige Werte eingeben!");
+  if (!date || isNaN(kwh)) {
+    alert("Bitte Datum und kWh korrekt eingeben!");
     return;
   }
 
-  const netKwh = kwh / (1 - loss);
-  const cost = netKwh * price;
+  const cost = kwh * price;
 
-  data.push({ date, kwh, netKwh, cost, location });
-  localStorage.setItem('evData', JSON.stringify(data));
-
-  render();
-});
+  data.push({ date, kwh, cost, location });
   localStorage.setItem('evData', JSON.stringify(data));
 
   render();
@@ -165,7 +158,6 @@ function render() {
       <td>${entry.date}</td>
       <td>${entry.location}</td>
       <td>${entry.kwh.toFixed(1)}</td>
-      <td>${entry.netKwh.toFixed(1)}</td>
       <td>${entry.cost.toFixed(2)}</td>
       <td><button onclick="deleteEntry(${index})">Löschen</button></td>
     </tr>`;
