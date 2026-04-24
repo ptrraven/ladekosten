@@ -4,7 +4,40 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ladekosten Tracker</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js">function exportCSV() {
+  let csv = "Datum,Ort,kWh,Kosten
+";
+  data.forEach(e => {
+    csv += `${e.date},${e.location},${e.kwh},${e.cost}
+`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ladekosten.csv';
+  a.click();
+}
+
+function exportPDF() {
+  let text = "Ladekosten Übersicht
+
+";
+  data.forEach(e => {
+    text += `${e.date} | ${e.location} | ${e.kwh} kWh | ${e.cost.toFixed(2)} €
+`;
+  });
+
+  const blob = new Blob([text], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ladekosten.pdf';
+  a.click();
+}
+
+</script>
 <style>
 body { font-family: Arial; margin: 20px; }
 input, button, select { padding: 8px; margin: 5px; }
@@ -88,6 +121,7 @@ th, td { border: 1px solid #ccc; padding: 8px; }
 </div>
 
 <h3>Auswertung</h3>
+<div id="summary" style="font-weight:bold; margin:10px 0;"></div>
 <canvas id="chart"></canvas>
 
 <table>
@@ -96,6 +130,11 @@ th, td { border: 1px solid #ccc; padding: 8px; }
 </thead>
 <tbody id="table"></tbody>
 </table>
+
+<div style="margin-top:10px;">
+  <button onclick="exportCSV()">Export CSV</button>
+  <button onclick="exportPDF()">Export PDF</button>
+</div>
 
 <script>
 let data = JSON.parse(localStorage.getItem('evData')) || [];
@@ -227,6 +266,16 @@ function render() {
   });
 
   const labels = Object.keys(monthly);
+  const total = Object.values(monthly).reduce((a,b)=>a+b,0);
+  const monthNames = {"01":"Jan","02":"Feb","03":"Mär","04":"Apr","05":"Mai","06":"Jun","07":"Jul","08":"Aug","09":"Sep","10":"Okt","11":"Nov","12":"Dez"};
+  const filterMonth = document.getElementById('filter_month')?.value;
+  const filterLocation = document.getElementById('filter_location')?.value;
+
+  let contextText = "Gesamt";
+  if (filterLocation) contextText = filterLocation;
+  if (filterMonth) contextText += ` ${monthNames[filterMonth]}`;
+
+  document.getElementById('summary').innerText = `${contextText}: ${total.toFixed(2)} €`;
   const values = Object.values(monthly);
 
   if (window.chart) window.chart.destroy();
