@@ -4,40 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ladekosten Tracker</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js">function exportCSV() {
-  let csv = "Datum,Ort,kWh,Kosten
-";
-  data.forEach(e => {
-    csv += `${e.date},${e.location},${e.kwh},${e.cost}
-`;
-  });
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'ladekosten.csv';
-  a.click();
-}
-
-function exportPDF() {
-  let text = "Ladekosten Übersicht
-
-";
-  data.forEach(e => {
-    text += `${e.date} | ${e.location} | ${e.kwh} kWh | ${e.cost.toFixed(2)} €
-`;
-  });
-
-  const blob = new Blob([text], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'ladekosten.pdf';
-  a.click();
-}
-
-</script>
 <style>
 body { font-family: Arial; margin: 20px; }
 input, button, select { padding: 8px; margin: 5px; }
@@ -45,255 +13,259 @@ table { border-collapse: collapse; width: 100%; margin-top: 20px; }
 th, td { border: 1px solid #ccc; padding: 8px; }
 .card { border:1px solid #ddd; padding:12px; border-radius:10px; margin-bottom:12px; }
 .flex { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.small { color:#666; font-size:12px; }
 </style>
 </head>
+
 <body>
 
 <h2>Ladekosten Tracker</h2>
 
 <div class="card">
-  <strong>Backup & Wiederherstellung</strong>
-  <div class="flex">
-    <button onclick="backupData()">Backup speichern</button>
-    <input type="file" id="fileInput" accept="application/json" onchange="importData(event)">
-  </div>
+<strong>Tarife</strong>
+<div class="flex">
+<label>Zuhause €/kWh: <input type="number" id="tariff_home" step="0.001"></label>
+<label>Kerstin €/kWh: <input type="number" id="tariff_kerstin" step="0.001"></label>
+<button onclick="saveTariffs()">Speichern</button>
+</div>
 </div>
 
 <div class="card">
-  <strong>Tarife verwalten</strong>
-  <div class="flex">
-    <label>Zuhause €/kWh: <input type="number" id="tariff_home" step="0.001"></label>
-    <label>Kerstin €/kWh: <input type="number" id="tariff_kerstin" step="0.001"></label>
-    <button onclick="saveTariffs()">Tarife speichern</button>
-  </div>
+<strong>Neuer Ladevorgang</strong>
+<div class="flex">
+<label>Datum: <input type="date" id="date"></label>
+<label>kWh: <input type="number" id="kwh" step="0.1"></label>
+
+<label>Ladeort:
+<select id="location" onchange="updatePrice()">
+<option value="Zuhause">Zuhause</option>
+<option value="Kerstin">Kerstin</option>
+</select>
+</label>
+
+<label>Preis €/kWh: <input type="number" id="price" disabled></label>
+
+<button onclick="addEntry()">Speichern</button>
+</div>
 </div>
 
 <div class="card">
-  <strong>Neuer Ladevorgang</strong>
-  <div class="flex">
-    <label>Datum: <input type="date" id="date"></label>
-    <label>kWh: <input type="number" id="kwh" step="0.1"></label>
+<strong>Filter</strong>
+<div class="flex">
+<label>Monat:
+<select id="filter_month">
+<option value="">Alle</option>
+<option value="01">Jan</option>
+<option value="02">Feb</option>
+<option value="03">Mär</option>
+<option value="04">Apr</option>
+<option value="05">Mai</option>
+<option value="06">Jun</option>
+<option value="07">Jul</option>
+<option value="08">Aug</option>
+<option value="09">Sep</option>
+<option value="10">Okt</option>
+<option value="11">Nov</option>
+<option value="12">Dez</option>
+</select>
+</label>
 
-    <label>Ladeort:
-    <select id="location" onchange="updatePrice()">
-      <option value="Zuhause">Zuhause</option>
-      <option value="Kerstin">Kerstin</option>
-    </select>
-    </label>
+<label>Ladeort:
+<select id="filter_location">
+<option value="">Alle</option>
+<option value="Zuhause">Zuhause</option>
+<option value="Kerstin">Kerstin</option>
+</select>
+</label>
 
-    <label>Preis €/kWh: <input type="number" id="price" disabled></label>
-    <button onclick="addEntry()">Speichern</button>
-  </div>
+<button onclick="render()">Anwenden</button>
 </div>
-
-<div class="card">
-  <strong>Filter</strong>
-  <div class="flex">
-    <label>Monat:
-      <select id="filter_month">
-        <option value="">Alle</option>
-        <option value="01">Jan</option>
-        <option value="02">Feb</option>
-        <option value="03">Mär</option>
-        <option value="04">Apr</option>
-        <option value="05">Mai</option>
-        <option value="06">Jun</option>
-        <option value="07">Jul</option>
-        <option value="08">Aug</option>
-        <option value="09">Sep</option>
-        <option value="10">Okt</option>
-        <option value="11">Nov</option>
-        <option value="12">Dez</option>
-      </select>
-    </label>
-
-    <label>Ladeort:
-      <select id="filter_location">
-        <option value="">Alle</option>
-        <option value="Zuhause">Zuhause</option>
-        <option value="Kerstin">Kerstin</option>
-      </select>
-    </label>
-
-    <button onclick="render()">Filter anwenden</button>
-  </div>
 </div>
 
 <h3>Auswertung</h3>
+
 <div id="summary" style="font-weight:bold; margin:10px 0;"></div>
+
 <canvas id="chart"></canvas>
 
 <table>
 <thead>
-<tr><th>Datum</th><th>Ort</th><th>kWh</th><th>Kosten €</th><th>Aktion</th></tr>
+<tr>
+<th>Datum</th>
+<th>Ort</th>
+<th>kWh</th>
+<th>Kosten €</th>
+<th>Aktion</th>
+</tr>
 </thead>
 <tbody id="table"></tbody>
 </table>
 
 <div style="margin-top:10px;">
-  <button onclick="exportCSV()">Export CSV</button>
-  <button onclick="exportPDF()">Export PDF</button>
+<button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportPDF()">Export PDF</button>
 </div>
 
 <script>
+
 let data = JSON.parse(localStorage.getItem('evData')) || [];
 let tariffs = JSON.parse(localStorage.getItem('tariffs')) || {
-  Zuhause: 0.300,
-  Kerstin: 0.300
+Zuhause: 0.30,
+Kerstin: 0.30
 };
 
-function parseNumber(value) {
-  if (!value) return NaN;
-  return parseFloat(value.replace(",", "."));
+function parseNumber(value){
+if(!value) return NaN;
+return parseFloat(value.replace(",","."));
 }
 
-function backupData() {
-  const backup = { data, tariffs };
-  const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'ladekosten_backup.json';
-  a.click();
+function loadTariffs(){
+document.getElementById('tariff_home').value = tariffs.Zuhause;
+document.getElementById('tariff_kerstin').value = tariffs.Kerstin;
 }
 
-function importData(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+function saveTariffs(){
+const zuhause = parseNumber(document.getElementById('tariff_home').value);
+const kerstin = parseNumber(document.getElementById('tariff_kerstin').value);
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const backup = JSON.parse(e.target.result);
-    if (backup.data && backup.tariffs) {
-      if (confirm('Bestehende Daten überschreiben?')) {
-        data = backup.data;
-        tariffs = backup.tariffs;
-        localStorage.setItem('evData', JSON.stringify(data));
-        localStorage.setItem('tariffs', JSON.stringify(tariffs));
-        render();
-      }
-    } else {
-      alert('Ungültige Datei');
-    }
-  };
-  reader.readAsText(file);
+if(isNaN(zuhause) || isNaN(kerstin)){
+alert("Bitte gültige Tarife eingeben!");
+return;
 }
 
-function saveTariffs() {
-  tariffs.Zuhause = parseNumber(document.getElementById('tariff_home').value);
-  tariffs.Kerstin = parseNumber(document.getElementById('tariff_kerstin').value);
-  localStorage.setItem('tariffs', JSON.stringify(tariffs));
-  updatePrice();
+tariffs.Zuhause = zuhause;
+tariffs.Kerstin = kerstin;
+
+localStorage.setItem('tariffs', JSON.stringify(tariffs));
+updatePrice();
 }
 
-function updatePrice() {
-  const location = document.getElementById('location').value;
-  document.getElementById('price').value = tariffs[location];
+function updatePrice(){
+const location = document.getElementById('location').value;
+document.getElementById('price').value = tariffs[location];
 }
 
-function addEntry() {
-  const date = document.getElementById('date').value;
-  const kwh = parseNumber(document.getElementById('kwh').value);
-  const location = document.getElementById('location').value;
-  const price = tariffs[location];
+function addEntry(){
+const date = document.getElementById('date').value;
+const kwh = parseNumber(document.getElementById('kwh').value);
+const location = document.getElementById('location').value;
+const price = tariffs[location];
 
-  if (!date || isNaN(kwh)) {
-    alert("Bitte Datum und kWh korrekt eingeben!");
-    return;
-  }
-
-  const cost = kwh * price;
-
-  data.push({ date, kwh, cost, location });
-  localStorage.setItem('evData', JSON.stringify(data));
-
-  render();
+if(!date || isNaN(kwh)){
+alert("Bitte gültige Eingaben!");
+return;
 }
 
-function deleteEntry(index) {
-  if (confirm('Eintrag wirklich löschen?')) {
-    data.splice(index, 1);
-    localStorage.setItem('evData', JSON.stringify(data));
-    render();
-  }
+const cost = kwh * price;
+
+data.push({date, kwh, cost, location});
+localStorage.setItem('evData', JSON.stringify(data));
+
+render();
 }
 
-function render() {
-  const table = document.getElementById('table');
-  table.innerHTML = '';
-
-  const filterMonth = document.getElementById('filter_month')?.value;
-  const filterLocation = document.getElementById('filter_location')?.value;
-
-  let monthly = {};
-
-  const filteredData = data.filter(entry => {
-    if (filterMonth && entry.date.substring(5,7) !== filterMonth) return false;
-    if (filterLocation && entry.location !== filterLocation) return false;
-    return true;
-  });
-
-  function formatDate(isoDate) {
-    if (!isoDate) return "";
-    const [y, m, d] = isoDate.split("-");
-    return `${d}.${m}.${y}`;
-  }
-
-  filteredData.forEach((entry, index) => {
-  table.innerHTML = '';
-
-  let monthly = {};
-
-  function formatDate(isoDate) {
-  if (!isoDate) return "";
-  const [y, m, d] = isoDate.split("-");
-  return `${d}.${m}.${y}`;
+function deleteEntry(index){
+if(confirm("Eintrag löschen?")){
+data.splice(index,1);
+localStorage.setItem('evData', JSON.stringify(data));
+render();
+}
 }
 
-  data.forEach((entry, index) => {
-    const tr = `<tr>
-      <td>${formatDate(entry.date)}</td>
-      <td>${entry.location}</td>
-      <td>${entry.kwh.toFixed(1)}</td>
-      <td>${entry.cost.toFixed(2)}</td>
-      <td><button onclick="deleteEntry(${index})">Löschen</button></td>
-    </tr>`;
-    table.innerHTML += tr;
-
-    const monthKey = entry.date.substring(0,7);
-    monthly[monthKey] = (monthly[monthKey] || 0) + entry.cost;
-  });
-
-  const labels = Object.keys(monthly);
-  const total = Object.values(monthly).reduce((a,b)=>a+b,0);
-  const monthNames = {"01":"Jan","02":"Feb","03":"Mär","04":"Apr","05":"Mai","06":"Jun","07":"Jul","08":"Aug","09":"Sep","10":"Okt","11":"Nov","12":"Dez"};
-  const filterMonth = document.getElementById('filter_month')?.value;
-  const filterLocation = document.getElementById('filter_location')?.value;
-
-  let contextText = "Gesamt";
-  if (filterLocation) contextText = filterLocation;
-  if (filterMonth) contextText += ` ${monthNames[filterMonth]}`;
-
-  document.getElementById('summary').innerText = `${contextText}: ${total.toFixed(2)} €`;
-  const values = Object.values(monthly);
-
-  if (window.chart) window.chart.destroy();
-
-  window.chart = new Chart(document.getElementById('chart'), {
-    type: 'bar',
-    data: { labels: labels, datasets: [{ data: values }] }
-  });
+function formatDate(d){
+const [y,m,day]=d.split("-");
+return `${day}.${m}.${y}`;
 }
 
-function loadTariffsToInputs() {
-  document.getElementById('tariff_home').value = tariffs.Zuhause ?? '';
-  document.getElementById('tariff_kerstin').value = tariffs.Kerstin ?? '';
+function render(){
+
+const table = document.getElementById('table');
+table.innerHTML = "";
+
+const fMonth = document.getElementById('filter_month').value;
+const fLocation = document.getElementById('filter_location').value;
+
+let monthly = {};
+
+const filtered = data.filter(e=>{
+if(fMonth && e.date.substring(5,7)!==fMonth) return false;
+if(fLocation && e.location!==fLocation) return false;
+return true;
+});
+
+filtered.forEach((e,i)=>{
+
+table.innerHTML += `<tr>
+<td>${formatDate(e.date)}</td>
+<td>${e.location}</td>
+<td>${e.kwh.toFixed(1)}</td>
+<td>${e.cost.toFixed(2)}</td>
+<td><button onclick="deleteEntry(${i})">Löschen</button></td>
+</tr>`;
+
+const key = e.date.substring(0,7);
+monthly[key] = (monthly[key]||0)+e.cost;
+
+});
+
+const total = Object.values(monthly).reduce((a,b)=>a+b,0);
+
+const names = {
+"01":"Jan","02":"Feb","03":"Mär","04":"Apr",
+"05":"Mai","06":"Jun","07":"Jul","08":"Aug",
+"09":"Sep","10":"Okt","11":"Nov","12":"Dez"
+};
+
+let text="Gesamt";
+if(fLocation) text=fLocation;
+if(fMonth) text+=` ${names[fMonth]}`;
+
+document.getElementById('summary').innerText =
+`${text}: ${total.toFixed(2)} €`;
+
+if(window.chart) window.chart.destroy();
+
+window.chart = new Chart(document.getElementById('chart'),{
+type:'bar',
+data:{
+labels:Object.keys(monthly),
+datasets:[{data:Object.values(monthly)}]
+}
+});
+
 }
 
-loadTariffsToInputs();
+function exportCSV(){
+let csv="Datum,Ort,kWh,Kosten\n";
+data.forEach(e=>{
+csv+=`${e.date},${e.location},${e.kwh},${e.cost}\n`;
+});
+
+const blob=new Blob([csv],{type:'text/csv'});
+const url=URL.createObjectURL(blob);
+const a=document.createElement('a');
+a.href=url;
+a.download='ladekosten.csv';
+a.click();
+}
+
+function exportPDF(){
+let text="Ladekosten Übersicht\n\n";
+data.forEach(e=>{
+text+=`${e.date} | ${e.location} | ${e.kwh} kWh | ${e.cost.toFixed(2)} €\n`;
+});
+
+const blob=new Blob([text],{type:'application/pdf'});
+const url=URL.createObjectURL(blob);
+const a=document.createElement('a');
+a.href=url;
+a.download='ladekosten.pdf';
+a.click();
+}
+
+loadTariffs();
 updatePrice();
 render();
+
 </script>
 
 </body>
