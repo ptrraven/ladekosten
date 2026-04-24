@@ -105,8 +105,8 @@ function importData(event) {
 }
 
 function saveTariffs() {
-  tariffs.Zuhause = parseFloat(document.getElementById('tariff_home').value);
-  tariffs.Kerstin = parseFloat(document.getElementById('tariff_kerstin').value);
+  tariffs.Zuhause = parseNumber(document.getElementById('tariff_home').value);
+  tariffs.Kerstin = parseNumber(document.getElementById('tariff_kerstin').value);
   localStorage.setItem('tariffs', JSON.stringify(tariffs));
   updatePrice();
 }
@@ -116,17 +116,31 @@ function updatePrice() {
   document.getElementById('price').value = tariffs[location];
 }
 
+function parseNumber(value) {
+  if (!value) return NaN;
+  return parseFloat(value.replace(",", "."));
+}
+
 function addEntry() {
   const date = document.getElementById('date').value;
-  const kwh = parseFloat(document.getElementById('kwh').value);
+  const kwh = parseNumber(document.getElementById('kwh').value);
   const location = document.getElementById('location').value;
   const price = tariffs[location];
-  const loss = parseFloat(document.getElementById('loss').value) / 100;
+  const loss = parseNumber(document.getElementById('loss').value) / 100;
+
+  if (!date || isNaN(kwh) || isNaN(loss)) {
+    alert("Bitte gültige Werte eingeben!");
+    return;
+  }
 
   const netKwh = kwh / (1 - loss);
   const cost = netKwh * price;
 
   data.push({ date, kwh, netKwh, cost, location });
+  localStorage.setItem('evData', JSON.stringify(data));
+
+  render();
+});
   localStorage.setItem('evData', JSON.stringify(data));
 
   render();
