@@ -237,6 +237,12 @@ function render() {
   });
 }
 
+function loadTariffsToInputs() {
+  document.getElementById('tariff_home').value = tariffs.Zuhause ?? '';
+  document.getElementById('tariff_kerstin').value = tariffs.Kerstin ?? '';
+}
+
+loadTariffsToInputs();
 updatePrice();
 render();
 </script>
