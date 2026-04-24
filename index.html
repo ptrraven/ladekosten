@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ladekosten Tracker</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 <link rel="icon" href="icon.png">
 
@@ -85,7 +87,9 @@ th, td { border: 1px solid #ccc; padding: 8px; }
 </div>
 
 <h3>Auswertung</h3>
+
 <div id="summary" style="font-weight:bold; margin:10px 0;"></div>
+
 <canvas id="chart"></canvas>
 
 <table>
@@ -107,129 +111,182 @@ th, td { border: 1px solid #ccc; padding: 8px; }
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem('evData')) || [];
-let tariffs = JSON.parse(localStorage.getItem('tariffs')) || { Zuhause:0.30, Kerstin:0.30 };
 
-function parseNumber(v){ if(!v) return NaN; return parseFloat(v.replace(",",".")); }
+let data = JSON.parse(localStorage.getItem('evData')) || [];
+let tariffs = JSON.parse(localStorage.getItem('tariffs')) || {
+  Zuhause: 0.30,
+  Kerstin: 0.30
+};
+
+function parseNumber(value){
+  if(!value) return NaN;
+  return parseFloat(value.replace(",","."));
+}
 
 function loadTariffs(){
- document.getElementById('tariff_home').value = tariffs.Zuhause;
- document.getElementById('tariff_kerstin').value = tariffs.Kerstin;
+  document.getElementById('tariff_home').value = tariffs.Zuhause;
+  document.getElementById('tariff_kerstin').value = tariffs.Kerstin;
 }
 
 function saveTariffs(){
- const z=parseNumber(tariff_home.value);
- const k=parseNumber(tariff_kerstin.value);
- if(isNaN(z)||isNaN(k)){ alert("Ungültige Tarife"); return; }
- tariffs.Zuhause=z; tariffs.Kerstin=k;
- localStorage.setItem('tariffs',JSON.stringify(tariffs));
- updatePrice();
+  const zuhause = parseNumber(document.getElementById('tariff_home').value);
+  const kerstin = parseNumber(document.getElementById('tariff_kerstin').value);
+
+  if(isNaN(zuhause) || isNaN(kerstin)){
+    alert("Bitte gültige Tarife eingeben!");
+    return;
+  }
+
+  tariffs.Zuhause = zuhause;
+  tariffs.Kerstin = kerstin;
+
+  localStorage.setItem('tariffs', JSON.stringify(tariffs));
+  updatePrice();
 }
 
-function updatePrice(){ price.value = tariffs[location.value]; }
+function updatePrice(){
+  const loc = document.getElementById('location').value;
+  document.getElementById('price').value = tariffs[loc];
+}
 
 function addEntry(){
- const date=dateInput.value;
- const kwh=parseNumber(kwhInput.value);
- const loc=location.value;
- const priceVal=tariffs[loc];
+  const date = document.getElementById('date').value;
+  const kwh = parseNumber(document.getElementById('kwh').value);
+  const loc = document.getElementById('location').value;
 
- if(!date||isNaN(kwh)){ alert("Bitte Eingaben prüfen"); return; }
+  const priceVal = tariffs[loc];
 
- const cost=kwh*priceVal;
- data.push({date,kwh,cost,location:loc});
- localStorage.setItem('evData',JSON.stringify(data));
- render();
+  if(!date || isNaN(kwh) || isNaN(priceVal)){
+    alert("Bitte Eingaben prüfen!");
+    return;
+  }
+
+  const cost = kwh * priceVal;
+
+  data.push({ date, kwh, cost, location: loc });
+  localStorage.setItem('evData', JSON.stringify(data));
+
+  render();
 }
 
-function deleteEntry(i){ if(confirm("Löschen?")){ data.splice(i,1); localStorage.setItem('evData',JSON.stringify(data)); render(); }}
+function deleteEntry(index){
+  if(confirm("Eintrag löschen?")){
+    data.splice(index,1);
+    localStorage.setItem('evData', JSON.stringify(data));
+    render();
+  }
+}
 
-function formatDate(d){ const [y,m,day]=d.split("-"); return `${day}.${m}.${y}`; }
+function formatDate(d){
+  const [y,m,day] = d.split("-");
+  return `${day}.${m}.${y}`;
+}
 
 function getFiltered(){
- const m=filter_month.value;
- const l=filter_location.value;
- return data.filter(e=>{
- if(m && e.date.substring(5,7)!==m) return false;
- if(l && e.location!==l) return false;
- return true;
- });
+  const m = document.getElementById('filter_month').value;
+  const l = document.getElementById('filter_location').value;
+
+  return data.filter(e=>{
+    if(m && e.date.substring(5,7)!==m) return false;
+    if(l && e.location!==l) return false;
+    return true;
+  });
 }
 
 function render(){
- table.innerHTML="";
- const filtered=getFiltered();
- let monthly={};
+  const table = document.getElementById('table');
+  table.innerHTML = "";
 
- filtered.forEach((e,i)=>{
- table.innerHTML+=`<tr>
- <td>${formatDate(e.date)}</td>
- <td>${e.location}</td>
- <td>${e.kwh.toFixed(1)}</td>
- <td>${e.cost.toFixed(2)}</td>
- <td><button onclick="deleteEntry(${i})">Löschen</button></td>
- </tr>`;
+  const filtered = getFiltered();
+  let monthly = {};
 
- const key=e.date.substring(0,7);
- monthly[key]=(monthly[key]||0)+e.cost;
- });
+  filtered.forEach((e,i)=>{
+    table.innerHTML += `<tr>
+      <td>${formatDate(e.date)}</td>
+      <td>${e.location}</td>
+      <td>${e.kwh.toFixed(1)}</td>
+      <td>${e.cost.toFixed(2)}</td>
+      <td><button onclick="deleteEntry(${i})">Löschen</button></td>
+    </tr>`;
 
- const total=Object.values(monthly).reduce((a,b)=>a+b,0);
+    const key = e.date.substring(0,7);
+    monthly[key] = (monthly[key] || 0) + e.cost;
+  });
 
- const names={"01":"Jan","02":"Feb","03":"Mär","04":"Apr","05":"Mai","06":"Jun","07":"Jul","08":"Aug","09":"Sep","10":"Okt","11":"Nov","12":"Dez"};
- let txt="Gesamt";
- if(filter_location.value) txt=filter_location.value;
- if(filter_month.value) txt+=` ${names[filter_month.value]}`;
+  const total = Object.values(monthly).reduce((a,b)=>a+b,0);
 
- summary.innerText=`${txt}: ${total.toFixed(2)} €`;
+  const names = {
+    "01":"Jan","02":"Feb","03":"Mär","04":"Apr",
+    "05":"Mai","06":"Jun","07":"Jul","08":"Aug",
+    "09":"Sep","10":"Okt","11":"Nov","12":"Dez"
+  };
 
- if(window.chart) chart.destroy();
- chart=new Chart(document.getElementById('chart'),{
- type:'bar',
- data:{ labels:Object.keys(monthly), datasets:[{data:Object.values(monthly)}] }
- });
+  let text = "Gesamt";
+  const fMonth = document.getElementById('filter_month').value;
+  const fLocation = document.getElementById('filter_location').value;
+
+  if(fLocation) text = fLocation;
+  if(fMonth) text += ` ${names[fMonth]}`;
+
+  document.getElementById('summary').innerText =
+    `${text}: ${total.toFixed(2)} €`;
+
+  if(window.chart) window.chart.destroy();
+
+  window.chart = new Chart(document.getElementById('chart'), {
+    type:'bar',
+    data:{
+      labels:Object.keys(monthly),
+      datasets:[{ data:Object.values(monthly) }]
+    }
+  });
 }
 
 function exportCSV(){
- const filtered=getFiltered();
- let csv="Datum,Ort,kWh,Kosten\n";
- filtered.forEach(e=>{ csv+=`${e.date},${e.location},${e.kwh},${e.cost}\n`; });
- const blob=new Blob([csv],{type:'text/csv'});
- const a=document.createElement('a');
- a.href=URL.createObjectURL(blob);
- a.download='ladekosten.csv';
- a.click();
+  const filtered = getFiltered();
+  let csv = "Datum,Ort,kWh,Kosten\n";
+
+  filtered.forEach(e=>{
+    csv += `${e.date},${e.location},${e.kwh},${e.cost}\n`;
+  });
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ladekosten.csv';
+  a.click();
 }
 
 function exportPDF(){
- const { jsPDF } = window.jspdf;
- const doc = new jsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
- const filtered=getFiltered();
- let y=10;
+  const filtered = getFiltered();
+  let y = 10;
 
- doc.setFontSize(16);
- doc.text("Ladekosten Abrechnung",10,y);
- y+=10;
+  doc.setFontSize(16);
+  doc.text("Ladekosten Abrechnung",10,y);
+  y += 10;
 
- doc.setFontSize(12);
- doc.text(summary.innerText,10,y);
- y+=10;
+  doc.setFontSize(12);
+  doc.text(document.getElementById('summary').innerText,10,y);
+  y += 10;
 
- filtered.forEach(e=>{
- doc.text(`${formatDate(e.date)} | ${e.location} | ${e.kwh} kWh | ${e.cost.toFixed(2)} €`,10,y);
- y+=6;
- });
+  filtered.forEach(e=>{
+    doc.text(
+      `${formatDate(e.date)} | ${e.location} | ${e.kwh} kWh | ${e.cost.toFixed(2)} €`,
+      10,y
+    );
+    y += 6;
+  });
 
- doc.save("ladekosten.pdf");
+  doc.save("ladekosten.pdf");
 }
-
-const dateInput=document.getElementById('date');
-const kwhInput=document.getElementById('kwh');
 
 loadTariffs();
 updatePrice();
 render();
+
 </script>
 
 </body>
